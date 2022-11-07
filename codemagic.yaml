@@ -4,7 +4,7 @@ workflows:
     max_build_duration: 30
     environment:
       vars:
-        PACKAGE_NAME: "app.catrin-shop.ru"
+        PACKAGE_NAME: "app.catrinshop.ru"
       flutter: stable
       xcode: latest
       cocoapods: default
