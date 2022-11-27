@@ -4,7 +4,7 @@ workflows:
     max_build_duration: 30
     environment:
       vars:
-        PACKAGE_NAME: "app.serenity-vl.ru"
+        PACKAGE_NAME: "app.serenityvl.ru"
       flutter: stable
       xcode: latest
       cocoapods: default
