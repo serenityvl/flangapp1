@@ -1,32 +1,62 @@
 workflows:
-  android-workflow:
-    name: SiteNative Android apk
+  ios-workflow:
+    name: SiteNative iOS without OneSignal
     max_build_duration: 30
     environment:
       vars:
-        PACKAGE_NAME: "ru.eatonline.tuapse"
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        APP_STORE_CONNECT_ISSUER_ID: 349e1bdd-7571-46c1-9d96-34e33cdbbdd4
+        APP_STORE_CONNECT_KEY_IDENTIFIER: FMCB2P778A
+        APP_STORE_CONNECT_PRIVATE_KEY: |-
+         -----BEGIN PRIVATE KEY-----
+         MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgJu/msHOoYsVI1W6p
+         526a5I7CqBCpJPHtOyOciOPPWaygCgYIKoZIzj0DAQehRANCAASlwYRnjmxdtnwV
+         JIzkWz/ICZCjijGipifDakbmxg9kR8xL4LXIV/NMY/IZFe9t0D7CLd2+iIDnln/w
+         w3J3WFri
+         -----END PRIVATE KEY-----
+
+        CERTIFICATE_PRIVATE_KEY: |-
+         
+
+        BUNDLE_ID: "ru.eatonline.tuapse"
       flutter: stable
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Set up local.properties
+      - name: Set up keychain to be used for codesigning using Codemagic CLI 'keychain' command
         script: |
-          echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
+          keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files $BUNDLE_ID --type IOS_APP_STORE --create --log-api-calls --verbose
+      - name: Use system default keychain
+        script: |
+          keychain add-certificates
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
       - name: Get Flutter packages
         script: |
           cd . && flutter packages pub get
       - name: Install pods
         script: |
           find . -name "Podfile" -execdir pod install \;
-      - name: Build APK with Flutter
+      - name: Flutter build ipa and automatic versioning
         script: |
-          cd . && flutter build apk --release --build-name=1.0.0 --build-number=$(($(google-play get-latest-build-number --package-name "$PACKAGE_NAME" --tracks="$GOOGLE_PLAY_TRACK") + 1))
+          flutter build ipa --release \
+          --build-name=1.0.0 \
+          --build-number={APP_VERSION} \
+          --export-options-plist=/Users/builder/export_options.plist
     artifacts:
-      - build/**/outputs/**/*.apk
-      - build/**/outputs/**/*.aab
-      - build/**/outputs/**/mapping.txt
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
       - flutter_drive.log
     publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
       scripts:
         - name: HTTP notification
           script: |
